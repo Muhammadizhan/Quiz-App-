@@ -1,82 +1,93 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const quizContainer = document.getElementById("quizContainer");
-  const startButton = document.getElementById("startButton");
-  const nextButton = document.getElementById("nextButton");
+const div = document.getElementById("quiz");
+let Index = 0;
+let response = [];
+let Total = 0;
 
-  let questionIndex = 0;
-  let questions = [];
-  let userAnswers = [];
-
-  // API URL
-  const apiUrl = "https://the-trivia-api.com/v2/questions";
-
-  startButton.addEventListener("click", () => {
-    fetchQuestionsAndDisplay();
-  });
-
-  nextButton.addEventListener("click", () => {
-    const selectedAnswer = document.querySelector(
-      'input[name="answer"]:checked'
-    );
-    if (selectedAnswer) {
-      userAnswers.push(selectedAnswer.value);
-      questionIndex++;
-      if (questionIndex < questions.length) {
-        displayQuestion(); // Display the next question
-      } else {
-        showResult(); // Show result if all questions are answered
+const RenderQuestion = (arr) => {
+  const allAnswers = [...arr.incorrectAnswers, arr.correctAnswer];
+  let shufflearray = [];
+  function shuffle(allAnswers) {
+    let usedIndex = [];
+    let i = 0;
+    while (i < allAnswers.length) {
+      let randomnumber = Math.floor(Math.random() * allAnswers.length);
+      if (!usedIndex.includes(randomnumber)) {
+        shufflearray.push(allAnswers[randomnumber]);
+        usedIndex.push(randomnumber);
+        i++;
       }
-    } else {
-      alert("Please select an answer.");
     }
-  });
-
-  function fetchQuestionsAndDisplay() {
-    fetch(apiUrl)
-      .then((response) => response.json())
-      .then((data) => {
-        questions = data.questions;
-        displayQuestion();
-        startButton.style.display = "none"; // Hide the start button
-        nextButton.style.display = "block"; // Show the next button after fetching questions
-      })
-      .catch((error) => {
-        console.error("Error fetching quiz data:", error);
-      });
+    return shufflearray;
   }
+  shuffle(allAnswers);
+  console.log(allAnswers);
 
-  function displayQuestion() {
-    const question = questions[questionIndex];
-    quizContainer.innerHTML = `<h2>Question ${questionIndex + 1}: ${
-      question.question.text
-    }</h2>`;
-    question.answers.forEach((answer) => {
-      const answerLabel = document.createElement("label");
-      const answerInput = document.createElement("input");
-      answerInput.type = "radio";
-      answerInput.name = "answer";
-      answerInput.value = answer;
-      answerLabel.appendChild(answerInput);
-      answerLabel.appendChild(document.createTextNode(answer));
-      quizContainer.appendChild(answerLabel);
-    });
-  }
+  // Clear previous question
+  div.innerHTML = "";
 
-  function showResult() {
-    let correctAnswers = 0;
-    userAnswers.forEach((userAnswer, index) => {
-      if (userAnswer === questions[index].correctAnswer) {
-        correctAnswers++;
+  // Creating a card element for the current question
+  const card = document.createElement("div");
+  card.classList.add("card");
+  card.innerHTML = `
+    <div class="card-body">
+      <h3 class="card-title">Q${Index + 1}: ${arr.question.text}</h3>
+      <ul>
+        ${shufflearray
+          .map(
+            (answer, index) => `
+              <li>
+                <label>
+                  <input type="radio" name="question${Index}" value="${answer}">
+                  ${answer}
+                </label>
+              </li>`
+          )
+          .join("")}
+      </ul>
+    </div>
+  `;
+
+  div.appendChild(card); // Append the card to the quiz container
+
+  document.getElementById("nextButton").disabled = true;
+  const radioButtons = document.querySelectorAll(
+    `input[name=question${Index}]`
+  );
+  radioButtons.forEach((radio) => {
+    radio.addEventListener("change", () => {
+      var selected = document.querySelector(
+        `input[name=question${Index}]:checked`
+      ).value;
+      if (selected) {
+        document.getElementById("nextButton").disabled = false;
       }
+      if (selected === arr.correctAnswer) {
+        Total += 10;
+      }
+      console.log(`Selected answer: ${selected}`);
+      console.log(Total);
     });
+  });
+};
 
-    const totalQuestions = questions.length;
-    const score = (correctAnswers / totalQuestions) * 100;
-
-    const resultMessage = `You have completed the quiz!\nYour score: ${score.toFixed(
-      2
-    )}%`;
-    quizContainer.innerHTML = `<h2>${resultMessage}</h2>`;
-    nextButton.style.display = "none"; // Hide the next button after showing the result
+const Nextquestion = () => {
+  if (Index < response.length - 1) {
+    Index++;
+    RenderQuestion(response[Index]);
+  } else {
+    div.innerHTML = `<h2>You have completed the quiz!</h2> <br> </hr> <h2> Your score is : ${Total} </h2>`;
+    document.getElementById("nextButton").style.display = "none";
   }
-});
+};
+
+const getQuestion = async () => {
+  try {
+    const data = await fetch("https://the-trivia-api.com/v2/questions");
+    response = await data.json();
+    console.log(response);
+    RenderQuestion(response[Index]);
+  } catch (error) {
+    console.log("error===>", error);
+  }
+};
+getQuestion();
